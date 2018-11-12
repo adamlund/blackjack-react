@@ -1,0 +1,63 @@
+body, html {
+    width: 100%;
+    height: 100%; 
+}
+body {
+    background-color: #095807; 
+    background-attachment: fixed;
+}
+#app {
+    width: 100%;
+    height: 100%;
+}
+.cardTable {
+    padding-top: 1em;
+}
+.controlPanel {
+    padding: .75em;
+}
+.cardHand {
+    display: flex;
+    padding: 25px;
+}
+.playingCard {
+    margin-right: 11px;
+    height: 177px; /* 210 */
+    width: 125px; /* 150 */
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    background: #efefef;
+    -webkit-box-shadow: 6px 8px 18px 0px rgba(0,0,0,0.49);
+    -moz-box-shadow: 6px 8px 18px 0px rgba(0,0,0,0.49);
+    box-shadow: 6px 8px 18px 0px rgba(0,0,0,0.49);
+}
+.playingCard.back {
+    background-color: #093F9B;
+    border: solid 1px #566b7a;
+}
+.playingCard .cardValue {
+    height: 100%;
+    flex: 1;
+    font-size: 24px;
+}
+.playingCard .cardFace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+.playingCard .cardFace > div {
+    display: block;
+}
+.playingCard .cardValue.bottom {
+  transform: rotate(180deg);
+}
+.hearts, .diamonds {
+  color: #EA252A;
+}
+.spades, clubs {
+  color: #050303;
+}
