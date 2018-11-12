@@ -6,6 +6,7 @@ const threeOfSpades = new Card('spades', [3], '3');
 const sevenOfClubs = new Card('clubs', [7], '7');
 const eightOfDiamonds = new Card('diamonds', [8], '8');
 const nineofDiamonds = new Card('diamonds', [9], '9');
+const tenofSpades = new Card('spades', [10], '10');
 const kingOfSpades = new Card('spades', [10], 'king');
 const queenOfHearts = new Card('hearts', [10], 'queen');
 const aceOfDiamonds = new Card('diamonds', [1,11], 'ace');
@@ -67,21 +68,25 @@ test('Hand with all the aces', () => {
 });
 
 test('Checking conditions for hand outcomes', () => {
-    // 11, 21
+    // 11, 21 - true blackjack
     const blackJack = Check([aceOfSpades, kingOfSpades]);
     expect(blackJack).toBe(CONDITIONS.blackjack);
 
-    // 11, 21
-    const blackJack_2 = Check([sevenOfClubs, aceOfHearts, threeOfSpades]);
+    // 11, 21 - true blackjack
+    const blackJack_2 = Check([tenofSpades, aceOfSpades]);
     expect(blackJack_2).toBe(CONDITIONS.blackjack);
 
+    // 11, 21 - not true blackjack, 21
+    const twentyOne_1 = Check([sevenOfClubs, aceOfHearts, threeOfSpades]);
+    expect(twentyOne_1).toBe(21);
+
     // 21
-    const blackJack_3 = Check([nineofDiamonds, kingOfSpades, twoOfHearts]);
-    expect(blackJack_3).toBe(CONDITIONS.blackjack);
+    const twentyOne_2 = Check([nineofDiamonds, kingOfSpades, twoOfHearts]);
+    expect(twentyOne_2).toBe(21);
 
     // 20, 21, 31, 41 -- rare case with 3 aces
-    const blackJack_4 = Check([aceOfDiamonds, eightOfDiamonds, aceOfHearts, aceOfSpades]);
-    expect(blackJack_4).toBe(CONDITIONS.blackjack);
+    const twentyOne_3 = Check([aceOfDiamonds, eightOfDiamonds, aceOfHearts, aceOfSpades]);
+    expect(twentyOne_3).toBe(21);
 
     // 8, 18
     const bestEighteen = Check([aceOfClubs, sevenOfClubs]);

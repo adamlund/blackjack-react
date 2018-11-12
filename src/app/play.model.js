@@ -51,13 +51,8 @@ export const CalculateHand = (cards) => {
 export const Check = (cards) => {
     const results = Object.values(CalculateHand(cards));
     // check for blackjack - 2 cards, one is an ace
-    const true_blackjack = (cards.length === 2 && results === [[11],[21]]);
-    if(true_blackjack) {
-        console.log('true blackjack found', )
-    }
-    console.log()
-    const blackjack = results.find(value => value === 21);
-    if (blackjack) {
+    const true_blackjack = (cards.length === 2 && results.find(value => value === 21));
+    if (true_blackjack) {
         return CONDITIONS.blackjack;
     }
     // check for bust
