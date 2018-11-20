@@ -1,130 +1,192 @@
 import React from 'react';
 import { Deck, Card } from './deck.model';
-import { PlayingCard } from './playingcard.component';
 import { Player } from './player.component';
-import { Check, CONDITIONS } from './play.model';
+import { PlayingCard } from './playingcard.component';
+import {
+    Check,
+    soft17,
+    CONDITIONS,
+    PLAYER_ACTION_TYPES,
+    PLAY_PHASES,
+    WINNER
+} from './play.model';
 import '../main.css';
 
-const PLAYER_ACTION_TYPES = {
-    hit: 'hit',
-    stand: 'stand',
-    double: 'double',
-    split: 'split',
-};
-
-const PLAY_PHASES = {
-    bet: 'place bets',  // place bets prior to play
-    player: 'player',   // player's turn
-    dealer: 'dealer',   // dealer'r turn
-    resolve: 'call',    // dealer has finished
-    complete: 'hand completed', // 
-};
-
 export class BlackJackTable extends React.Component {
+    static newPlayer() {
+        return {
+            id: 'player_1',
+            name: 'Player 1',
+            result: '',
+            cards: [],
+            funds: 200,
+            bet_amount: 10,
+            bet: 0,
+            playedHands: []
+        };
+    }
     constructor(props) {
         super(props);
-        this.state = {
-            deck: null,
-            inPlay: false,
-            phase: '',
-            result: '',
-            bettingPool: {}, // key value pairs, one value for each player
-            hands: [],  // audit trail of hands
-            // TODO: create Player class, to scale for multiple 1-5 players
-            dealercards: [], // array of cards for now
-            playercards: [], // array of cards for now assume 1 player
-            playerMoney: 100,
-            
-        };
-        this.start = this.start.bind(this);
         this.newHand = this.newHand.bind(this);
         this.resetHand = this.resetHand.bind(this);
         this.playerAction = this.playerAction.bind(this);
+        this.state = {
+            deck: null,
+            inPlay: false,
+            phase: PLAY_PHASES.bet,
+            hands: [],  // audit trail of hands
+            result: '',
+            dealercards: [], // array of cards for dealer
+            players: {
+                player_1: BlackJackTable.newPlayer()
+            },
+        };
     }
-    start() {
-        this.setState({ inPlay: true, phase: PLAY_PHASES.bet });
-    }
-    newHand() {
+    async newHand() {
+        const { players } = this.state;
+        const dealercards = [];
         const deck = new Deck();
-        deck.shuffle();
         const randDelay = Math.floor(Math.random() * 100);
-        setTimeout(() => {
+        // clear out player card hands
+        Object.values(players).map(player => {
+            player.cards = [];
+            player.result = '';
+            player.bet = player.bet_amount;
+            player.funds -= player.bet_amount;
+            return player;
+        });
+        await new Promise(resolve => setTimeout(() => {
             deck.shuffle();
-            // deal two cards to each player then the dealer
-            const playercards = [deck.dealCard(), deck.dealCard()];
-            const dealercards = [deck.dealCard(), deck.dealCard()];
-
-            // TODO: Following dealt cards, dealer card 1 is an Ace, offer insurance bet
-            this.setState({ inPlay: true, result: '', phase: PLAY_PHASES.player, deck, dealercards, playercards });
-        }, randDelay);
+            resolve();
+        }, randDelay));
+        // deal two cards to each player then the dealer
+        for (let i=0; i < 2; i++) {
+            Object.values(players).map(player => {
+                player.cards.push(deck.dealCard());
+                return player;
+            });
+            dealercards.push(deck.dealCard());
+        }
+        // TODO: Following dealt cards, if dealer card 1 is an Ace, offer insurance bet
+        this.setState({
+            inPlay: true,
+            result: '',
+            phase: PLAY_PHASES.player,
+            deck,
+            players,
+            dealercards
+        });
+    }
+    nextPlayer() {
+        this.setState({ phase: PLAY_PHASES.dealer });
+        this.dealerAction();        
     }
     playerAction(event) {
-        const { target } = event;
-        const { name } = target;
-        const { playercards, deck } = this.state;
+        const { name } = event.target;
+        const { players, deck } = this.state;
+        const subjectAction = name.split(':');
+        let mPlayers = Object.assign(players);
 
-        if (name === PLAYER_ACTION_TYPES.hit) {
-            const newCards = playercards;
-            newCards.push(deck.dealCard());
-            this.setState({ playercards: newCards });
-            // evaluate cards
-            if (Check(newCards) === CONDITIONS.bust) {
-                this.setState({ phase: PLAY_PHASES.dealer });
-                this.dealerAction();
-            }
-        }
-        if (name === PLAYER_ACTION_TYPES.stand) {
-            this.setState({ phase: PLAY_PHASES.dealer });
-            this.dealerAction();
-        }       
+        switch(subjectAction[1]) {
+            case PLAYER_ACTION_TYPES.hit:
+                mPlayers[subjectAction[0]].cards.push(deck.dealCard());
+                this.setState({ players: mPlayers });
+                // evaluate cards
+                if (Check(mPlayers[subjectAction[0]].cards) === CONDITIONS.bust) {
+                    this.nextPlayer();
+                }
+            break;
+            case PLAYER_ACTION_TYPES.double:
+                mPlayers[subjectAction[0]].cards.push(deck.dealCard());
+                mPlayers[subjectAction[0]].bet += mPlayers[subjectAction[0]].bet_amount;
+                mPlayers[subjectAction[0]].funds -= mPlayers[subjectAction[0]].bet_amount;
+                this.setState({ players: mPlayers });
+                this.nextPlayer();
+            break;
+            case PLAYER_ACTION_TYPES.stand:
+                this.nextPlayer();
+            break;
+        }    
     }
-    resolveHand(winner, result) {
+    resolveHand(playerKey, playerCheck, winner, result) {
         const { hands } = this.state;
+        const { players } = this.state;
+        const mPlayers = Object.assign(players);
+        let winnings = 0;
+
+        console.log('resolve', playerKey, playerCheck, winner, result);
+        if (winner === WINNER.DEALER) {
+            mPlayers[playerKey].bet = 0;
+        }
+        if (winner === WINNER.PLAYER) {
+            // blackjack pays 3:2
+            if (playerCheck === CONDITIONS.blackjack) {
+                winnings = Math.ceil(((mPlayers[playerKey].bet * 3) / 2) * 2);
+            // all others pay 1:1
+            } else {
+                winnings = mPlayers[playerKey].bet * 2;
+            }
+            mPlayers[playerKey].funds += winnings;
+        }
+        else if (winner === WINNER.DRAW) {
+            mPlayers[playerKey].funds += mPlayers[playerKey].bet;
+        }
+
+        mPlayers[playerKey].bet = 0;
+        mPlayers[playerKey].playedHands.push({winner, result});
+        mPlayers[playerKey].result = `${winnings > 0 ? `Won $${winnings}. ` : ''}${result}`;
+
         const updatedHands = hands;
         updatedHands.push({winner, result});
-        const displayResult = `Winner: ${winner}, ${result}`;
-        this.setState({ phase: PLAY_PHASES.complete, result: displayResult, hands: updatedHands });
-        return true;
+        this.setState({
+            phase: PLAY_PHASES.complete,
+            result: `Winner: ${winner}, ${result}`,
+            hands: updatedHands,
+            players: mPlayers
+        });
     }
     call() {
-        const { dealercards, playercards } = this.state;
+        const { dealercards, players } = this.state;
         this.setState({ phase: PLAY_PHASES.resolve });
         const dealerCheck = Check(dealercards);
 
-        // TODO, resolve for an array of players
-        const playerCheck = Check(playercards);
-        let winner = '';
-        let result = '';
+        // Resolve win/loss/draw condition for each player
+        Object.keys(players).forEach(playerKey => {
+            const playerCheck = Check(players[playerKey].cards);
+            let winner = '';
+            let result = '';
 
-        if (dealerCheck === CONDITIONS.bust) {
-            result = (playerCheck === dealerCheck) ? 'BOTH BUST' : 'DEALER BUST';
-            winner = (playerCheck === dealerCheck) ? 'PUSH' : 'PLAYER';
-            return this.resolveHand(winner, result);
-        }
-
-        if (dealerCheck === CONDITIONS.blackjack) {
-            result = (playerCheck === dealerCheck) ? 'PLAYER AND DEALER BLACKJACK' : 'BLACKJACK ';
-            winner = (playerCheck === dealerCheck) ? 'PUSH' : 'DEALER';
-            return this.resolveHand(winner, result);
-        }
-
-        if (playerCheck === CONDITIONS.bust) {
-            return this.resolveHand('DEALER', 'PLAYER BUSTS');    
-        }
-
-        if (playerCheck === CONDITIONS.blackjack) {
-            return this.resolveHand('PLAYER', 'PLAYER WINS WITH BLACKJACK'); 
-        }
-
-        result = (dealerCheck >= playerCheck) ? `DEALER WINS WITH ${dealerCheck}` : `PLAYER WINS WITH ${playerCheck}`;
-        winner = (dealerCheck > playerCheck) ? 'DEALER' : 'PLAYER';
-        return this.resolveHand(winner, result);
+            if (dealerCheck === CONDITIONS.bust) {
+                result = (playerCheck === dealerCheck) ? 'BOTH BUST, DEALER WINS' : 'DEALER BUST';
+                winner = (playerCheck === dealerCheck) ? WINNER.DEALER : WINNER.PLAYER;
+            }
+            else if (dealerCheck === CONDITIONS.blackjack) {
+                result = (playerCheck === dealerCheck) ? 'PLAYER AND DEALER BLACKJACK' : 'BLACKJACK ';
+                winner = (playerCheck === dealerCheck) ? WINNER.DRAW : WINNER.DEALER;
+            }
+            else if (playerCheck === CONDITIONS.bust) {
+                result = 'PLAYER BUSTS';
+                winner = WINNER.DEALER;
+            }
+            else if (playerCheck === CONDITIONS.blackjack) {
+                result = 'PLAYER WINS WITH BLACKJACK';
+                winner = WINNER.PLAYER;
+            }
+            else if (playerCheck === dealerCheck) {
+                result = 'DRAW BETWEEN PLAYER AND DEALER';
+                winner = WINNER.DRAW;
+            }
+            else {
+                result = (dealerCheck > playerCheck) ? `DEALER WINS WITH ${dealerCheck}` : `PLAYER WINS WITH ${playerCheck}`;
+                winner = (dealerCheck > playerCheck) ? WINNER.DEALER : WINNER.PLAYER;
+            }
+            this.resolveHand(playerKey, playerCheck, winner, result);
+        });
     }
     dealerAction() {
-        const { dealercards, playercards, deck } = this.state;
+        const { dealercards, players, deck } = this.state;
         const checkValue = Check(dealercards);
-        const playerValue = Check(playercards);
-        console.log('dealer action, dealer:', checkValue, 'player:', playerValue);
+        const playerValue = Check(players.player_1.cards);
 
         // dealer logic
         // check my cards
@@ -134,21 +196,12 @@ export class BlackJackTable extends React.Component {
 
         if (checkValue === CONDITIONS.blackjack
             || checkValue === CONDITIONS.bust
+            // TODO: adjust this to check all player busts
             || playerValue === CONDITIONS.bust) {
             this.call();
-        } else if (checkValue > 16) {
-            // based on player check values
-            // iterate through players and decide what to do
-            if (playerValue > checkValue) {
-                // dealer hits
-                const newCards = dealercards;
-                newCards.push(deck.dealCard());
-                // evaluate cards
-                this.setState({ dealercards: newCards });
-                this.dealerAction();
-            } else {
-                this.call();
-            }
+        // this logic assumes dealer hit on soft 17 (S17)
+        } else if (checkValue >= 17 && !soft17(dealercards)) {
+            this.call();
         } else {
             // dealer hits
             const newCards = dealercards;
@@ -159,7 +212,10 @@ export class BlackJackTable extends React.Component {
         }
     }
     resetHand() {
-        this.setState({ inPlay: false, deck: null, dealercards: [], playercards: [] });
+        const players = {
+            player_1: BlackJackTable.newPlayer()
+        }
+        this.setState({ inPlay: false, deck: null, dealercards: [], players });
     }
     render() {
         const {
@@ -167,9 +223,8 @@ export class BlackJackTable extends React.Component {
             phase,
             result,
             hands,
-            playercards,
+            players,
             dealercards,
-            playerMoney
         } = this.state;
         let dealerWins = 0;
         let playerWins = 0;
@@ -225,49 +280,32 @@ export class BlackJackTable extends React.Component {
             {inPlay &&
                 <React.Fragment>
                     <div className="text-light">Dealer</div>
-                    <div><Player name="dealer" hand={dealercards} funds={100} /></div>
                     <div className="row">
                         <div className="cardHand">
-                            {dealercards.map(card => (
-                                <PlayingCard
-                                    key={`card-${card.suit}-${card.face}`}
-                                    suit={card.suit}
-                                    face={card.face}
-                                    value={card.value}
-                                />
-                            ))}
+                            {(phase >= PLAY_PHASES.dealer) && 
+                                dealercards.map(card => (
+                                    <PlayingCard
+                                        key={`card-${card.suit}-${card.face}`}
+                                        suit={card.suit}
+                                        face={card.face}
+                                        value={card.value}
+                                    />
+                                ))
+                            }
+                            {(phase <= PLAY_PHASES.player) &&
+                                <React.Fragment>
+                                    <PlayingCard
+                                        key={`card-${dealercards[0].suit}-${dealercards[0].face}`}
+                                        suit={dealercards[0].suit}
+                                        face={dealercards[0].face}
+                                        value={dealercards[0].value}
+                                    />
+                                    <div className="playingCard back"></div>
+                                </React.Fragment>
+                            }
                         </div>
                     </div>
-                    <div className="text-light">Player</div>
-                    <div><Player name="player" hand={playercards} funds={playerMoney} /></div>
-                    {(phase === PLAY_PHASES.player) &&
-                        <div className="btn-group">
-                            <button
-                                className="btn btn-primary"
-                                name={PLAYER_ACTION_TYPES.hit}
-                                onClick={this.playerAction}
-                            >Hit
-                                </button>
-                            <button 
-                                className="btn btn-primary"
-                                name={PLAYER_ACTION_TYPES.stand}
-                                onClick={this.playerAction}
-                            >Stand
-                                </button>
-                        </div>
-                    }
-                    <div className="row">
-                        <div className="cardHand">
-                            {playercards.map(card => (
-                                <PlayingCard
-                                    key={`card-${card.suit}-${card.face}`}
-                                    suit={card.suit}
-                                    face={card.face}
-                                    value={card.value}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    <Player {...players.player_1} phase={phase} handler={this.playerAction} />
                 </React.Fragment>
             }
             </div>

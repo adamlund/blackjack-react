@@ -4,9 +4,9 @@
   "description": "Blackjack simulator game using React",
   "main": "src/index.js",
   "scripts": {
-    "start": "webpack-dev-server --mode development --open",
+    "start": "webpack-dev-server --mode development --debug --devtool source-map --open",
     "build": "webpack --mode production",
-    "build:dev": "webpack --watch --mode development",
+    "build:dev": "webpack --watch --mode development --debug --devtool source-map --mode development",
     "test": "jest",
     "test:coverage": "rm -rf ./coverage && jest --coverage",
     "test:watch": "jest --watch"

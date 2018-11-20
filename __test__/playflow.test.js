@@ -1,8 +1,15 @@
-import { CalculateHand, Check, CONDITIONS } from '../src/app/play.model';
+import {
+    CalculateHand,
+    Check,
+    soft17,
+    CONDITIONS
+} from '../src/app/play.model';
 import { Card } from '../src/app/deck.model';
 
 const twoOfHearts = new Card('hearts', [2], '2');
 const threeOfSpades = new Card('spades', [3], '3');
+const fourOfClubs = new Card('clubs', [4], '4');
+const sixOfHearts = new Card('hearts', [6], '6');
 const sevenOfClubs = new Card('clubs', [7], '7');
 const eightOfDiamonds = new Card('diamonds', [8], '8');
 const nineofDiamonds = new Card('diamonds', [9], '9');
@@ -112,4 +119,24 @@ test('Checking conditions for hand outcomes', () => {
     const bust23 = Check([twoOfHearts, aceOfHearts, queenOfHearts, kingOfSpades]);
     expect(bust23).toBe(CONDITIONS.bust);
 
+});
+
+test('Soft 17 hands', () => {
+    const soft17_yes_1 = [aceOfClubs, sixOfHearts];
+    expect(soft17(soft17_yes_1)).toBe(true);
+
+    const soft17_yes_2 = [sixOfHearts, aceOfDiamonds];
+    expect(soft17(soft17_yes_2)).toBe(true);
+    
+    // same hand sum potentials [7, 17] but with three cards
+    const soft17_no_1 = [fourOfClubs, aceOfSpades, twoOfHearts];
+    expect(soft17(soft17_no_1)).toBe(false);
+
+    // hard 17
+    const soft17_no_2 = [kingOfSpades, sevenOfClubs];
+    expect(soft17(soft17_no_2)).toBe(false);
+
+    // not 17 at all
+    const soft17_no_3 = [tenofSpades, nineofDiamonds];
+    expect(soft17(soft17_no_3)).toBe(false);
 });

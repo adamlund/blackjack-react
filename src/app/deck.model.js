@@ -1,7 +1,6 @@
 // Card generator
 export const SUITS = ['hearts', 'spades', 'diamonds', 'clubs'];
-export const FACEVALUES = ['2','3','4','5','6','7','8','9','10','Jack','Queen','King','Ace']; // 11 =j, 12 = q, 13 = k, 1,14=a
-// export const VALUES = [2,3,4,5,6,7,8,9,10,10,10,10,11];
+export const FACEVALUES = ['2','3','4','5','6','7','8','9','10','Jack','Queen','King','Ace'];
 export const VALUES = [
     [2],[3],[4],[5],[6],[7],[8],[9],[10],[10],[10],[10],[1,11]
 ];
@@ -15,7 +14,7 @@ export class Card {
 }
 export class Deck {
     constructor(){
-        this.cards = this.generateDeck();
+        this.cards = this.shuffle();
     }
     /**
      * Make a deck of cards based on SUITS, VALUES, and FACEVALUES
@@ -32,17 +31,17 @@ export class Deck {
     /** 
      * Return random index 0-51 for shuffling the deck
     */
-    randomIdx() {
-        return Math.floor(Math.random() * 52);
+    randomIdx(deckCount) {
+        return Math.floor(Math.random() * deckCount);
     }
     /**
      * Recursive fn to place a card in a random spot in a target deck (array).
-     * First attempt at a very simple shufle algorithm.
+     * First attempt at a very simple shuffle algorithm.
      * @param {Card} card card to place at a spot in the deck
      * @param {Array<Card>} deck the deck to inject the card into
      */
     placeCardInDeck(card, deck) {
-        const randidx = this.randomIdx();
+        const randidx = this.randomIdx(deck.length);
         if (deck[randidx] === undefined || !deck[randidx]) {
             deck[randidx] = card;
         }
