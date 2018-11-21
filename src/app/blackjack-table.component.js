@@ -46,19 +46,19 @@ export class BlackJackTable extends React.Component {
         const { players } = this.state;
         const dealercards = [];
         const deck = new Deck();
-        const randDelay = Math.floor(Math.random() * 100);
+
         // clear out player card hands
         Object.values(players).map(player => {
             player.cards = [];
             player.result = '';
-            player.bet = player.bet_amount;
-            player.funds -= player.bet_amount;
+            player.bet = (player.funds >= player.bet_amount) ? player.bet_amount : player.funds;
+            player.funds -= player.bet;
             return player;
         });
         await new Promise(resolve => setTimeout(() => {
             deck.shuffle();
             resolve();
-        }, randDelay));
+        }, Math.floor(Math.random() * 100)));
         // deal two cards to each player then the dealer
         for (let i=0; i < 2; i++) {
             Object.values(players).map(player => {
@@ -82,7 +82,7 @@ export class BlackJackTable extends React.Component {
         this.dealerAction();        
     }
     playerAction(event) {
-        const { name } = event.target;
+        const { name, value } = event.target;
         const { players, deck } = this.state;
         const subjectAction = name.split(':');
         let mPlayers = Object.assign(players);
@@ -106,6 +106,10 @@ export class BlackJackTable extends React.Component {
             case PLAYER_ACTION_TYPES.stand:
                 this.nextPlayer();
             break;
+            case PLAYER_ACTION_TYPES.bet_amount:
+                mPlayers[subjectAction[0]].bet_amount = parseInt(value, 10);
+                this.setState({ players: mPlayers });
+            break;
         }    
     }
     resolveHand(playerKey, playerCheck, winner, result) {
@@ -114,19 +118,19 @@ export class BlackJackTable extends React.Component {
         const mPlayers = Object.assign(players);
         let winnings = 0;
 
-        console.log('resolve', playerKey, playerCheck, winner, result);
         if (winner === WINNER.DEALER) {
             mPlayers[playerKey].bet = 0;
         }
         if (winner === WINNER.PLAYER) {
             // blackjack pays 3:2
             if (playerCheck === CONDITIONS.blackjack) {
-                winnings = Math.ceil(((mPlayers[playerKey].bet * 3) / 2) * 2);
+                winnings = Math.ceil((mPlayers[playerKey].bet * 3) / 2);
             // all others pay 1:1
             } else {
-                winnings = mPlayers[playerKey].bet * 2;
+                winnings = mPlayers[playerKey].bet;
             }
-            mPlayers[playerKey].funds += winnings;
+            // refund the original bet along with winnings
+            mPlayers[playerKey].funds += (winnings + mPlayers[playerKey].bet);
         }
         else if (winner === WINNER.DRAW) {
             mPlayers[playerKey].funds += mPlayers[playerKey].bet;
@@ -201,6 +205,9 @@ export class BlackJackTable extends React.Component {
             this.call();
         // this logic assumes dealer hit on soft 17 (S17)
         } else if (checkValue >= 17 && !soft17(dealercards)) {
+            this.call();
+        // do not hit if playercards are lower
+        } else if (checkValue > playerValue) {
             this.call();
         } else {
             // dealer hits

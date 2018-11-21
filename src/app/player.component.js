@@ -23,9 +23,8 @@ export class Player extends React.Component {
             result,
             playedHands
         } = this.props;
-        const sums = CalculateHand(cards);
         const best = Check(cards);
-        const funded = (funds > 0);
+        const funded = (funds > 0 || bet > 0);
         const canHit = (best !== CONDITIONS.blackjack && best !== CONDITIONS.bust);
         const canDouble = (cards.length === 2 && (best === 9 || best === 11 || best === 10));
         let win = 0;
@@ -46,9 +45,9 @@ export class Player extends React.Component {
         });
         return (
             <React.Fragment>
-                <div style={{ color: '#efefef' }}>
-                    <ul className="list-inline">
-                    <li className="list-inline-item"><strong>{name}</strong></li>
+                <div>
+                    <ul className="list-inline text-light">
+                        <li className="list-inline-item"><strong>{name}</strong></li>
                         <li className="list-inline-item">
                             <span className="badge badge-info mr-2">Win {win}</span>
                             <span className="badge badge-info mr-2">Loss {loss}</span>
@@ -57,10 +56,24 @@ export class Player extends React.Component {
                     </ul>
                 </div>
                 <div className="mb-2">
-                    <div style={{ color: '#efefef' }}>Showing <strong>{best}</strong>. Possible {sums && Object.keys(sums).map(sumKey => <span key={sumKey}>[{sumKey}]</span>)}</div>
-                    <div style={{ color: '#efefef' }}>Funds ${funds} Current Bet: ${bet} Bet Amount: ${bet_amount}</div>
-                    <div style={{ color: '#efefef' }}>{result}</div>
-                    {!funded &&
+                    <div className="text-light">Showing <strong>{best}</strong>. {result}</div>
+                    <div className="text-light">Funds ${funds} | Current Bet: ${bet}</div>
+                    <div className="text-light">
+                        {(phase === PLAY_PHASES.complete && funded) &&
+                            <label htmlFor="adjustBet">Adjust Bet Amount:
+                            <input
+                                id="adjustBet"
+                                type="number"
+                                min="10"
+                                max="100"
+                                name={`${id}:${PLAYER_ACTION_TYPES.bet_amount}`}
+                                value={bet_amount}
+                                onChange={handler}
+                                className="ml-2"
+                            /></label>
+                        }
+                    </div>
+                    {(!funded) &&
                         <div className="alert alert-danger">You have run out of funds and must start over.</div>
                     }
                 </div>

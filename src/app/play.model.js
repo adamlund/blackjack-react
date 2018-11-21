@@ -14,6 +14,7 @@ export const PLAYER_ACTION_TYPES = {
     stand: 'stand',
     double: 'double',
     split: 'split',
+    bet_amount: 'bet_amount',
 };
 
 export const PLAY_PHASES = {
